@@ -2,9 +2,9 @@
 // Network first, so a new deploy shows up on the next load; the cache is only the offline fallback.
 // Requests to /api/ are never touched or cached.
 // Bump CACHE whenever SHELL changes, or installed apps keep the old list.
-const CACHE = 'mj-shell-v3';
+const CACHE = 'mj-shell-v4';
 const FONT_HOSTS = ['https://fonts.googleapis.com', 'https://fonts.gstatic.com'];
-const SHELL = ['./', 'index.html', 'styles.css', 'flow5.css', 'app.js', 'full.js', 'flow5.js', 'manifest.webmanifest', 'assets/png/icon-192.png', 'assets/png/icon-512.png', 'assets/png/icon-180.png'];
+const SHELL = ['./', 'index.html', 'styles.css', 'flow5.css', 'app.js', 'full.js', 'flow5.js', 'live.js', 'manifest.webmanifest', 'assets/png/icon-192.png', 'assets/png/icon-512.png', 'assets/png/icon-180.png'];
 
 self.addEventListener('install', (e) => {
   e.waitUntil(caches.open(CACHE).then((c) => c.addAll(SHELL)).then(() => self.skipWaiting()));

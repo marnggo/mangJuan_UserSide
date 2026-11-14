@@ -10,6 +10,7 @@
     "dev": "vite",
     "build": "vite build",
     "start": "node --env-file-if-exists=.env src/server/index.js",
+    "mock-aide": "node --env-file-if-exists=.env src/server/mock-aide.js",
     "seed": "node --env-file-if-exists=.env db/seed.js",
     "lint": "eslint . && prettier --check .",
     "format": "prettier --write .",

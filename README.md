@@ -4,7 +4,13 @@
 
 1. `npm install`
 2. Copy `.env.example` to `.env` and fill it in (database URL, CA file, JWT secret, demo password).
-3. `npm start`, then open http://localhost:3000. Add `?lab` for the prototype picker with Flows 1 to 5.
+3. `npm start`, then open http://localhost:3000. The app runs on the database only: no sample bookings, offers or Manongs. Add `?lab` for the old prototype picker (Flows 1 to 5, sample data).
+4. **Debug sign-in:** "Continue with Google" signs in as the demo resident Enzo Santos with no password and shows his real database rows. It is on everywhere, so Enzo's account must never hold real data. `npm run seed` creates him.
+5. To test without Team 2's app, run `npm run mock-aide` instead and open http://localhost:3000/mock-aide/ next to the resident app. Pick which Manong you are acting as, then take a request at the resident's price or counter it once (each Manong answers once; the resident picks one offer). For the job you win: on the way (with ETA), arrived, chat, add extra charges, start, job done, or back out. **Delete all bookings** (top of the page, type `DELETE` to confirm) clears every booking with its offers, chat and charges so the free database doesn't fill up; residents, units and Manongs stay. It has no login, so never run it against real residents' data.
+
+Database changes are in `db/migrations/` and are applied in order (003: saved units, service categories and base prices; 004: Manongs, offers, chat, extra charges and ratings; 005: the Manongs get DC character names and no photos).
+
+`reference/mang-juan-frontend.html` is a frozen, self-contained copy of the whole front end from before it was wired to the database (all flows, sample data, no server). Open it in a browser to check that nothing went missing.
 
 ## Folder map
 
