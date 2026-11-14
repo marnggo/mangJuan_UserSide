@@ -14,10 +14,16 @@ const is5 = () => st.variant === 'f5';
 // the screen. Add ?lab to the address to get the prototype picker with Flows 1 to 5 and the Simulate buttons.
 const APP5 = !new URLSearchParams(location.search).has('lab');
 if (APP5) {
+  let fitW = 0;
   const fit = () => {
-    const s = innerWidth < 600 ? innerWidth / 375 : Math.min(innerWidth / 375, innerHeight / 812);
-    document.documentElement.style.setProperty('--fit', s);
-    document.documentElement.style.setProperty('--h', (innerWidth < 600 ? innerHeight / s : 812) + 'px');
+    // The on-screen keyboard shrinks the height; keep the layout still while someone is typing.
+    if (innerWidth === fitW && /^(INPUT|TEXTAREA)$/.test(document.activeElement?.tagName)) return;
+    fitW = innerWidth;
+    const phoneMode = innerWidth < 600, s = phoneMode ? innerWidth / 375 : Math.min(innerWidth / 375, innerHeight / 812);
+    const h = phoneMode ? innerHeight / s : 812, css = document.documentElement.style;
+    css.setProperty('--fit', s);
+    css.setProperty('--h', h + 'px');
+    css.setProperty('--k', Math.min(1, h / 812)); // sign-in screens are drawn at 812 tall: shrink them to fit
   };
   const onlyF5 = () => {
     if (!location.hash.startsWith('#f5/')) location.replace(location.pathname + location.search + '#f5/a-welcome');

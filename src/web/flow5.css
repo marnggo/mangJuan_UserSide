@@ -354,5 +354,8 @@ html.app { -webkit-tap-highlight-color: transparent; } /* no grey flash on tap i
 html.app .panel, html.app .flow-badge, html.app .frame-name { display: none; }
 html.app .stage { display: block; padding: 0; margin: 0; }
 html.app .phone { position: absolute; left: 50%; top: 0; margin-left: -187.5px; width: 375px; height: var(--h, 812px); border-radius: 0; box-shadow: none; transform-origin: top center; transform: scale(var(--fit, 1)); }
+/* Sign-in screens are drawn at 375 x 812; on shorter phones they shrink to fit (--k from flow5.js), side gaps stay yellow. */
+html.app .screen:has(> .f5auth) { background: #ffd230; }
+html.app .f5 .f5auth { inset: 0 auto auto 0; width: 375px; height: 812px; transform-origin: top center; transform: scale(var(--k, 1)); }
 /* The device draws its own status bar and home indicator. */
 html.app .notch, html.app .statusbar, html.app .homebar { display: none; }
