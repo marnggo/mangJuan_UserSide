@@ -6,6 +6,7 @@ import { BOOKING_STATES as S } from '../../src/utils/contract.js';
 import { memoryStore } from '../helpers/memoryStore.js';
 
 const SECRET = 'integration-test-secret-integration-1234';
+const KEY = 'mock-aide-test-key';
 const juan = {
   email: 'juan@example.com',
   mobile_number: '0917 123 4567',
@@ -25,12 +26,21 @@ const request1 = {
 let store, app, token, id, hal, arthur;
 const as = () => ({ Authorization: `Bearer ${token}` });
 const aide = (path, body, method = 'post') =>
-  request(app)[method](`/api/mock-aide/bookings/${id}${path}`).send(body);
+  request(app)
+    [method](`/api/mock-aide/bookings/${id}${path}`)
+    .set({ 'X-Mock-Aide-Key': KEY })
+    .send(body);
 const detail = async () => (await request(app).get(`/api/bookings/${id}`).set(as())).body;
 
 beforeEach(async () => {
   store = memoryStore();
-  app = createApp({ store, secret: () => SECRET, authLimit: 1000, mockAide: true });
+  app = createApp({
+    store,
+    secret: () => SECRET,
+    authLimit: 1000,
+    mockAide: true,
+    mockAideKey: KEY,
+  });
   token = (await request(app).post('/api/auth/register').send(juan)).body.token;
   id = (await request(app).post('/api/bookings').set(as()).send(request1)).body.booking.id;
   [hal, arthur] = store.aides.map((a) => a.id);
@@ -188,14 +198,42 @@ describe('after a Manong is booked', () => {
       (await aide('/progress', { aide_id: 'nope', aide_status: 'arrived' }, 'patch')).body.error
         .fields,
     ).toHaveProperty('aide_id');
-    expect((await request(app).get('/api/mock-aide/aides')).body.aides).toHaveLength(2);
+    expect(
+      (await request(app).get('/api/mock-aide/aides').set({ 'X-Mock-Aide-Key': KEY })).body.aides,
+    ).toHaveLength(2);
+  });
+});
+
+describe('mock aide password', () => {
+  it('locks the API without the right key, and stays locked when none is set', async () => {
+    const list = (a, key) => {
+      const r = request(a).get('/api/mock-aide/bookings');
+      return key === undefined ? r : r.set({ 'X-Mock-Aide-Key': key });
+    };
+    expect((await list(app)).body.error.code).toBe('BAD_MOCK_AIDE_KEY');
+    expect((await list(app, 'wrong')).status).toBe(401);
+    expect((await list(app, KEY)).status).toBe(200);
+    const noKey = createApp({ store, secret: () => SECRET, mockAide: true, mockAideKey: '' });
+    expect((await list(noKey, '')).body.error.code).toBe('MOCK_AIDE_KEY_MISSING');
+    // The page itself has no data, so it loads without the key.
+    expect((await request(app).get('/mock-aide/')).status).toBe(200);
+  });
+  it('slows down guessing: 10 wrong keys lock that address for 15 minutes', async () => {
+    for (let i = 0; i < 10; i++)
+      await request(app)
+        .get('/api/mock-aide/aides')
+        .set({ 'X-Mock-Aide-Key': 'x' + i });
+    const r = await request(app).get('/api/mock-aide/aides').set({ 'X-Mock-Aide-Key': KEY });
+    expect(r.status).toBe(429);
+    expect(r.headers['retry-after']).toBeTruthy();
   });
 });
 
 describe('DELETE /api/mock-aide/bookings (clean sweep)', () => {
   it('needs the typed confirmation, then deletes every booking with its offers', async () => {
     await aide('/offers', { aide_id: hal });
-    const sweep = (body) => request(app).delete('/api/mock-aide/bookings').send(body);
+    const sweep = (body) =>
+      request(app).delete('/api/mock-aide/bookings').set({ 'X-Mock-Aide-Key': KEY }).send(body);
     expect((await sweep({})).body.error.fields).toHaveProperty('confirm');
     expect(store.bookings).toHaveLength(1);
     expect((await sweep({ confirm: 'DELETE' })).body).toEqual({ deleted: 1 });

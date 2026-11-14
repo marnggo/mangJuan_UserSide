@@ -34,13 +34,36 @@ const store = {
 };
 const me = () => aides.find((a) => a.id === $('aide').value);
 
+// The mock aide password (MOCK_AIDE_KEY on the server), kept for this browser tab only.
+let key = (() => {
+  try {
+    return sessionStorage.getItem('mj_mock_aide_key') || '';
+  } catch {
+    return '';
+  }
+})();
+function askKey() {
+  key = prompt('Mock aide password') || '';
+  try {
+    sessionStorage.setItem('mj_mock_aide_key', key);
+  } catch {
+    /* private mode: asked again on reload */
+  }
+}
+
 async function api(method, path, body) {
+  if (path.startsWith('/mock-aide') && !key)
+    throw new Error('Enter the mock aide password: click Refresh.');
   const r = await fetch('/api' + path, {
     method,
-    headers: { 'Content-Type': 'application/json' },
+    headers: { 'Content-Type': 'application/json', 'X-Mock-Aide-Key': key },
     body: body && JSON.stringify(body),
   });
   const data = r.status === 204 ? {} : await r.json();
+  if (r.status === 401) {
+    key = ''; // stop the 4-second refresh from retrying a wrong password
+    throw new Error('Wrong password. Click Refresh to try again.');
+  }
   if (!r.ok) {
     const f = data.error?.fields;
     throw new Error((f && Object.values(f)[0]) || data.error?.message || r.statusText);
@@ -227,7 +250,11 @@ $('list').addEventListener('keydown', (e) => {
   const b = e.target.closest('article').querySelector(`button[data-act="${name}"]`);
   if (b) act(b);
 });
-$('refresh').addEventListener('click', load);
+$('refresh').addEventListener('click', () => {
+  if (!key) askKey();
+  if (aides.length) load();
+  else start();
+});
 // Clean sweep so the free database doesn't fill up. Typed confirmation, since it can't be undone.
 $('sweep').addEventListener('click', async () => {
   const typed = prompt(
@@ -249,22 +276,26 @@ $('aide').addEventListener('change', () => {
   render();
 });
 
-Promise.all([
-  api('GET', '/categories').then(({ categories }) => {
-    catalog = Object.fromEntries(categories.map((c) => [c.key, c]));
-  }),
-  api('GET', '/mock-aide/aides').then((r) => {
-    aides = r.aides;
-    $('aide').innerHTML = aides
-      .map(
-        (a) =>
-          `<option value="${esc(a.id)}">${esc(a.full_name)} (${esc(a.categories.join(', '))})</option>`,
-      )
-      .join('');
-    const saved = store.get('mj_mock_aide');
-    if (aides.some((a) => a.id === saved)) $('aide').value = saved;
-  }),
-])
-  .catch((e) => ($('msg').textContent = e.message))
-  .finally(load);
-setInterval(load, 4000);
+const start = () =>
+  Promise.all([
+    api('GET', '/categories').then(({ categories }) => {
+      catalog = Object.fromEntries(categories.map((c) => [c.key, c]));
+    }),
+    api('GET', '/mock-aide/aides').then((r) => {
+      aides = r.aides;
+      $('aide').innerHTML = aides
+        .map(
+          (a) =>
+            `<option value="${esc(a.id)}">${esc(a.full_name)} (${esc(a.categories.join(', '))})</option>`,
+        )
+        .join('');
+      const saved = store.get('mj_mock_aide');
+      if (aides.some((a) => a.id === saved)) $('aide').value = saved;
+    }),
+  ])
+    .then(load)
+    .catch((e) => ($('msg').textContent = e.message));
+
+if (!key) askKey();
+start();
+setInterval(() => key && aides.length && load(), 4000);

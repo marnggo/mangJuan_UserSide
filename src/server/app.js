@@ -1,3 +1,4 @@
+import { createHash, timingSafeEqual } from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 import express from 'express';
 import {
@@ -84,9 +85,10 @@ export function createApp({
   secret = jwtSecret,
   authLimit = 30,
   loginFailLimit = 5,
-  // Dev-only stand-in for Team 2's aide app. It has no login and sees every booking, so it must stay
-  // off anywhere real residents' data lives.
+  // Dev-only stand-in for Team 2's aide app. It sees every booking, so it must stay off anywhere real
+  // residents' data lives. Its API needs mockAideKey in the X-Mock-Aide-Key header.
   mockAide = process.env.MOCK_AIDE === '1',
+  mockAideKey = process.env.MOCK_AIDE_KEY,
 } = {}) {
   const app = express();
   app.set('trust proxy', 1); // one proxy in front on the host, so req.ip is the client's address
@@ -371,10 +373,24 @@ export function createApp({
     fail(res, 409, 'CANNOT_REVIEW', 'You can rate a job once, after it is completed.');
   });
 
-  // Mock Mang Juan aide side, for testing the resident flow without Team 2's app. No login: the page
-  // says which Manong it is acting as in each request (aide_id).
+  // Mock Mang Juan aide side, for testing the resident flow without Team 2's app. One shared key
+  // (MOCK_AIDE_KEY) instead of a login; the page says which Manong it acts as in each request (aide_id).
   if (mockAide) {
     const S = BOOKING_STATES;
+    const hash = (v) => createHash('sha256').update(String(v)).digest();
+    const keyFails = counter(10, 15 * 60 * 1000);
+    // The page itself holds no data, so only the API is locked. No key set means locked, never open.
+    app.use('/api/mock-aide', (req, res, next) => {
+      if (!mockAideKey)
+        return fail(res, 503, 'MOCK_AIDE_KEY_MISSING', 'Set MOCK_AIDE_KEY on the server first.');
+      const wait = keyFails.wait(req.ip);
+      if (wait) return tooMany(res, wait);
+      if (!timingSafeEqual(hash(req.get('x-mock-aide-key') ?? ''), hash(mockAideKey))) {
+        keyFails.add(req.ip);
+        return fail(res, 401, 'BAD_MOCK_AIDE_KEY', 'Wrong mock aide password.');
+      }
+      next();
+    });
     const aideOf = async (req, res) => {
       const id = req.body?.aide_id;
       const aide = typeof id === 'string' && UUID.test(id) ? await store.findAide(id) : null;

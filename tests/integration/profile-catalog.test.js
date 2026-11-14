@@ -6,6 +6,7 @@ import { BOOKING_STATES as S } from '../../src/utils/contract.js';
 import { memoryStore } from '../helpers/memoryStore.js';
 
 const SECRET = 'integration-test-secret-integration-1234';
+const KEY = 'mock-aide-test-key';
 const juan = {
   email: 'juan@example.com',
   mobile_number: '0917 123 4567',
@@ -25,7 +26,13 @@ const booking = {
 let store, app;
 beforeEach(() => {
   store = memoryStore();
-  app = createApp({ store, secret: () => SECRET, authLimit: 1000, mockAide: true });
+  app = createApp({
+    store,
+    secret: () => SECRET,
+    authLimit: 1000,
+    mockAide: true,
+    mockAideKey: KEY,
+  });
 });
 const as = (token) => ({ Authorization: `Bearer ${token}` });
 const tokenFor = async (who) =>
@@ -175,14 +182,18 @@ describe('mock aide API', () => {
         .set(as(token))
         .send({ ...booking, unit_id: unitId })
     ).body.booking;
-    const list = (await request(app).get('/api/mock-aide/bookings')).body.bookings;
+    const list = (await request(app).get('/api/mock-aide/bookings').set({ 'X-Mock-Aide-Key': KEY }))
+      .body.bookings;
     expect(list[0]).toMatchObject({
       resident_name: 'Juan Dela Cruz',
       unit_notes: 'Gate 2',
       offers: [],
     });
     const move = (status) =>
-      request(app).patch(`/api/mock-aide/bookings/${id}/status`).send({ status });
+      request(app)
+        .patch(`/api/mock-aide/bookings/${id}/status`)
+        .set({ 'X-Mock-Aide-Key': KEY })
+        .send({ status });
     for (const s of [S.ACCEPTED, S.COMPLETED, S.CANCELLED])
       expect((await move(s)).body.error.code).toBe('BAD_TRANSITION');
     // Nobody can take it: declining needs no Manong.
