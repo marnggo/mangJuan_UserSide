@@ -12,6 +12,7 @@ export default [
       'icm/',
       'graphify-out/',
       '.impeccable/',
+      'reference/', // frozen front-end snapshot, generated
       'src/web/', // never linted yet; remove once it passes ESLint
     ],
   },
@@ -23,7 +24,10 @@ export default [
       parserOptions: { ecmaFeatures: { jsx: true } },
     },
   },
-  { files: ['src/client/**'], languageOptions: { globals: { ...globals.browser } } },
+  {
+    files: ['src/client/**', 'src/mock-aide/**'],
+    languageOptions: { globals: { ...globals.browser } },
+  },
   {
     files: ['src/client/public/sw.js'],
     languageOptions: { globals: { ...globals.serviceworker } },

@@ -8,6 +8,8 @@ const RESIDENTS = [
   { full_name: 'Bruce Wayne', email: 'bruce.wayne@example.com', mobile_number: '09170000001' },
   { full_name: 'Clark Kent', email: 'clark.kent@example.com', mobile_number: '09170000002' },
   { full_name: 'Diana Prince', email: 'diana.prince@example.com', mobile_number: '09170000003' },
+  // The debug "Continue with Google" account (src/server/app.js DEBUG_RESIDENT_MOBILE).
+  { full_name: 'Enzo Santos', email: 'enzo.demo@example.com', mobile_number: '09175550142' },
 ];
 
 const db = getDb();

@@ -85,6 +85,31 @@ export function validateRegister(body) {
     : { value: { email, full_name, mobile_number, password } };
 }
 
+// Profile edit (U02): any of full_name, email, mobile_number, with the sign-up rules. Password change
+// is not part of it. Returns { value } holding only the fields sent, or { fields }.
+export function validateProfile(body) {
+  const b = body ?? {};
+  const fields = {};
+  const value = {};
+  if (b.full_name !== undefined) {
+    value.full_name = str(b.full_name);
+    if (!value.full_name || value.full_name.length > 100)
+      fields.full_name = 'Enter your full name.';
+  }
+  if (b.email !== undefined) {
+    value.email = str(b.email).toLowerCase();
+    if (!EMAIL.test(value.email) || value.email.length > 254)
+      fields.email = 'Enter a valid email address.';
+  }
+  if (b.mobile_number !== undefined) {
+    value.mobile_number = normalizeMobile(b.mobile_number);
+    if (!value.mobile_number) fields.mobile_number = MOBILE_HELP;
+  }
+  if (!Object.keys(fields).length && !Object.keys(value).length)
+    fields.full_name = 'Send at least one of full_name, email, mobile_number.';
+  return Object.keys(fields).length ? { fields } : { value };
+}
+
 // Log in with a mobile number (Figma) or an email (U01 spec). Open item 25.
 export function validateLogin(body) {
   const b = body ?? {};
